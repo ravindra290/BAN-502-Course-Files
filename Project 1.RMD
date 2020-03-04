@@ -1,0 +1,181 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+
+## Name :- Aggarwal Ravindra 
+## Project 1 
+## Course - BAN 502 
+
+Loading Libraries 
+
+```{r}
+options(tidyverse.quiet=TRUE)
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("tidyverse")
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(cluster) #algorithms for clustering
+library(factoextra) #visualization
+library(caret) #for the dummyVars function
+library(mice) #package for imputation
+#install.packages("VIM")
+library(VIM) #visualizing missingness
+library(randomForest) #random forests, using rather than ranger, bug as of Feb 2019 in ranger parameter tuning
+library(e1071) #often needed for model building assistance
+library(nnet) #for neural networks
+library(rpart) #for classification trees
+library(RColorBrewer) #better visualization of classification
+library(leaps) #best subset selection
+library(lubridate)
+library(MASS)
+library(rattle) #better visualization of classification trees
+#install.packages("PerformanceAnalytics")
+library(PerformanceAnalytics)
+```
+
+Reading Chicago 
+
+```{r}
+Chicago = read_csv ("Chicago.csv")
+```
+
+## Review and Prepare data
+
+* Chicago data frame has 22 variables and 267185 observations of data. 
+
+We are trying to predict " Arrest". This data frame has information of crime, location, police ID, person ID, type, date and location of crime, arrest made or not. 
+
+Response Variable is "Arrest". 
+
+We are deleting ID,Case Number, Updated On, X Coordinate, Y Coordinate amd Location. 
+
+
+```{r}
+str(Chicago)
+summary(Chicago)
+```
+```{r}
+
+Chicago = Chicago %>% dplyr:: select (-ID,-'Case Number',-'Updated On',-'X Coordinate',-'Y Coordinate', -'Location')
+
+```
+
+
+Check structure and summary again for missing values. 
+
+```{r}
+str(Chicago)
+summary(Chicago)
+```
+
+After removing columns, there are 16 variables left in data set. Following variables have missing value 
+
+" Ward" = 4, "Community Area" = 2, Latitude and Longitude have 4365 observations missing. 
+
+All incident occured in 2018.
+
+```{r}
+vim_plot = aggr(Chicago, numbers = TRUE, prop = c(TRUE, FALSE),cex.axis=.7)
+#the cex.axis reduces size of text on x-axis so labels fit better
+```
+```{r}
+Chicago_NA <- Chicago %>% drop_na('Description',Ward,'Community Area',Latitude, Longitude)
+```
+
+```{r}
+Chicago_NA$Description[Chicago_NA$Description == ""] = NA
+Chicago_NA <- Chicago_NA %>% drop_na('Description')
+```
+
+Let us display again
+
+```{r}
+vim_plot1 = aggr(Chicago_NA, numbers = TRUE, prop = c(TRUE, FALSE),cex.axis=.7)
+```
+
+
+```{r}
+str(Chicago_NA)
+summary(Chicago_NA)
+```
+
+Find time from Dates
+
+
+```{r}
+Chicago_NA = Chicago_NA %>% mutate(Date=mdy_hms(Date))
+```
+
+Find Hours, and create new variable called Hour 
+
+```{r}
+Chicago_NA = Chicago_NA %>% mutate(Hour = hour(Date))# Creates new variable in dataset with the # hour extracted from each date/time
+summary(Chicago_NA$Hour)
+
+```
+
+
+Extracting minutes from date, and adding new variable days.
+
+```{r}
+Chicago_NA = Chicago_NA %>% mutate(Minute = minute(Date))# Creates new variable in dataset with the # minute extracted from each date/time
+summary(Chicago_NA$Minute)
+```
+
+All crime happened between 18.00 to 18.23 minutes in this database. 
+
+Extracting Month from Date and adding new variable Month 
+```{r}
+Chicago_NA = Chicago_NA %>% mutate(Month = months(Date))# Creates new variable in dataset with the # Month extracted from each date/time
+summary(Chicago_NA$Month)
+
+```
+Extracting Days from Date and adding new variable for Day 
+
+```{r}
+Chicago_NA = Chicago_NA %>% mutate(Day= day(Date))# Creates new variable in dataset with the # day extracted from each date/time
+summary(Chicago_NA$Day)
+```
+
+Converting variables to factors. 
+
+```{r}
+Chicago_NA = Chicago_NA %>% mutate(Hour = as.factor(Hour))%>%mutate(`Primary Type`=as.factor(`Primary Type`))%>% mutate(`Location Description`=as.factor(`Location Description`))%>%mutate(District=as.factor(District))%>%mutate(Ward=as.factor(Ward))%>%mutate(`Community Area`=as.factor(`Community Area`))%>%mutate(`FBI Code`=as.factor(`FBI Code`))%>%mutate(Month=as.factor(Month))%>% mutate(Day=as.factor(Day))
+```
+
+Let us look at the coorelation among variables 
+
+```{r}
+Chicago_NA_Sample <- Chicago_NA[sample(nrow(Chicago_NA),100),]
+summary(Chicago_NA_Sample)
+```
+
+** Created a smaller dataframe Chicago_NA_Sample with 100 rows only. 
+
+```{r}
+ggcorr(Chicago_NA_Sample, label = "TRUE", label_round = 1) 
+```
+
+```{r}
+
+```
+
+```{r}
+ggplot(Chicago_NA_Sample,aes(Arrest,Beat))+geom_boxplot()
+```
+
+```{r}
+ggplot(Chicago_NA_Sample, aes(x=Ward, y=Arrest)) + geom_col() 
+
+```
+
+```{r}
+ggplot(Chicago_NA_Sample,aes(Arrest,Minute,Colour=Hour))+geom_line()
+
+```
+
+
